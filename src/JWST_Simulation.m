@@ -2,7 +2,7 @@
 % A more open version of the JWST exercise, showing syntax needed to access
 % outputs directly.
 function [OPD, RMS_Spotsize, Full_Spotsize, Centroid_X, Centroid_Y, OPD_RMS, OPD_PV, PSF, PSF_diff, ImageX, ImageY, Strehl] = simulate(CorrectionMatrix)
-    close all; clear all; clc;
+    % close all; clear all; clc;
 
     %% Load Lens File
     OS = JWST(1);
