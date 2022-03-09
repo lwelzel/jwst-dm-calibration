@@ -274,3 +274,8 @@ fabric.properties
 
 # idea
 .idea*
+
+# matlab stuff
+*.m
+*.p
+*.mat
