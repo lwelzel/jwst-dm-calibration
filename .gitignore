@@ -277,5 +277,7 @@ fabric.properties
 
 # matlab stuff
 *.m
+!/src/JWST_sim_runtime.m
+!/src/JWST_Simulation.m
 *.p
 *.mat

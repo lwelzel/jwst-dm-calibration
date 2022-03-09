@@ -50,6 +50,7 @@ def optimize_jwst_mirror_segments(correction_mat):
 
 if __name__ == "__main__":
     print("\t Starting up MATLAB engine...")
+    global eng
     eng = matlab.engine.start_matlab()
     eng.addpath(eng.genpath(getcwd()), nargout=0)
     print("\t MATLAB engine running.")
