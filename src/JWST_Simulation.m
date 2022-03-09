@@ -1,7 +1,7 @@
 %% JWST Dashboard Core Functionality
 % A more open version of the JWST exercise, showing syntax needed to access
 % outputs directly.
-function [OPD, RMS_Spotsize, Full_Spotsize, Centroid_X, Centroid_Y, OPD_RMS, OPD_PV, PSF, PSF_diff, ImageX, ImageY, Strehl] = simulate(CorrectionMatrix)
+function [OPD, RMS_Spotsize, Full_Spotsize, Centroid_X, Centroid_Y, OPD_RMS, OPD_PV, PSF, PSF_diff, ImageX, ImageY, Strehl] = simulate(CorrectionMatrix, show_results)
     % close all; clear all; clc;
 
     %% Load Lens File
@@ -58,7 +58,7 @@ function [OPD, RMS_Spotsize, Full_Spotsize, Centroid_X, Centroid_Y, OPD_RMS, OPD
     %% Wavefront Diagram and PSF
     settings = FORTASettings;
     settings.field = 1;
-    settings.plot = false; % if you want to run this in an optimizer it may be advisable to set this to false, otherwise you end up with lots of figures;
+    settings.plot = show_results; % if you want to run this in an optimizer it may be advisable to set this to false, otherwise you end up with lots of figures;
     settings.ref = 'Chief';
     settings.sampling = 5;
     settings.remove_tilt = 0;
