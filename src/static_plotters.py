@@ -41,7 +41,7 @@ def displC(c, title="Amplitude-Phase space of the PSF", trim=0, show=True):
 
     axre.set_title('Real')
     axre.set_ylabel('y [px]')
-    axim.set_title('Imag')
+    axim.set_title('Imaginary')
     axamp.set_title('Amplitude')
     axamp.set_xlabel('x [px]')
     axamp.set_ylabel('y [px]')

@@ -8,29 +8,56 @@ By L. Welzel, Z. Burr
 """
 
 import numpy as np
+from scipy.optimize import minimize
 from os import getcwd
 import matlab.engine
 from static_plotters import displC, plotCAmpl
 
-eng = matlab.engine.start_matlab()
-eng.addpath(eng.genpath(getcwd()), nargout=0)
+def plot_psf(correction_matrix, show_MATLAB=False):
+    out = eng.JWST_Simulation(matlab.double(correction_matrix.tolist()), show_MATLAB, nargout=12)
+
+    psf = np.array(out[7]._data).reshape(out[7].size, order='F').T
+    psf_diff = np.array(out[8]._data).reshape(out[8].size, order='F').T
+    displC(np.log10(psf), title=r"Corrected PSF (log$_{10}$-scale)", trim=251)
+    displC(np.log10(psf_diff), title=r"Diffraction limited PSF (log$_{10}$-scale)", trim=251)
+
+    displC(np.log10(psf - psf_diff), title=r"PSF difference (log$_{10}$-scale)", trim=251)
 
 
-def objective():
-    return
+
+def objective(theta):
+    theta = theta.reshape(matrix_shape)
+    out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=1)
+    print(out)
+    return out
 
 
 def optimize_jwst_mirror_segments(correction_mat):
-    out = eng.JWST_Simulation(matlab.double(correction_mat.tolist()), nargout=12)
-    out = np.array(out)
-    out = out[7:9]
-    print(out)
-    print(out.shape)
-    print(np.any(np.iscomplex(out)))
+    plot_psf(correction_mat, show_MATLAB=False)
+
+    result = minimize(objective, x0=correction_mat,
+                      method="SLSQP",
+                      options={"disp": True,
+                               "maxiter": 50,
+                               "ftol": 1.e-6})
+
+    print(result)
+
+    converged = result.x.reshape(matrix_shape)
+    plot_psf(converged, show_MATLAB=True)
     return
 
 
 if __name__ == "__main__":
+    print("\t Starting up MATLAB engine...")
+    eng = matlab.engine.start_matlab()
+    eng.addpath(eng.genpath(getcwd()), nargout=0)
+    print("\t MATLAB engine running.")
+
+    global matrix_shape
+    matrix_shape = (18, 4)
+
+
     correction_mat = np.array([
         [0.414170806677252, 0.300243140031183, 0.439976576044261, 0.0152119184255706, -0.128208842154579,
          0.478345378762405, 0.0754076647493227, 0.651252356266327, 0.101404608428473, 0.0391465366416755,
@@ -52,7 +79,14 @@ if __name__ == "__main__":
          -0.0411604369112084, 7.72475667997612, -3.58727666297385, -10.6689141377548, 2.27478638187123,
          10.2546957682035, -7.65585159583474]
     ])
-    correction_mat = - correction_mat.T
 
+    rng = np.random.default_rng()
+    noise = rng.normal(0, 0.1, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
+
+    correction_mat += noise
+
+    correction_mat = correction_mat.T
 
     optimize_jwst_mirror_segments(correction_mat)
+
+    eng.quit()
