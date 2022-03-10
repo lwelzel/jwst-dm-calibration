@@ -86,7 +86,7 @@ function [OPD_RMS, Strehl, RMS_Spotsize, MTF_data]  = simulate(CorrectionMatrix)
     %% Calculate PSF and MTF
 
     % Calculate PSF and MTF from the wavefront data. Final input are the figure numbers (can be omitted)         
-    [PSF_data, MTF_data] = FORREst(OS_out, settings, OP, OPD_data, [5 6]);
+    [PSF_data, MTF_data] = FORREst(OS_out, settings, OP, OPD_data);
 
     PSF = PSF_data(1).field(1).PSFpoly; % extract point spread function.
 %    PSF_diff = PSF_data(1).field(1).PSFpolydiff; % extract diffraction limited PSF.

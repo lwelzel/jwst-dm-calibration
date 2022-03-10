@@ -21,7 +21,7 @@ def plot_psf(correction_matrix, show_MATLAB=False):
     displC(np.log10(psf), title=r"Corrected PSF (log$_{10}$-scale)", trim=251)
     displC(np.log10(psf_diff), title=r"Diffraction limited PSF (log$_{10}$-scale)", trim=251)
 
-    displC(np.log10(psf - psf_diff), title=r"PSF difference (log$_{10}$-scale)", trim=251)
+    displC(np.log10(np.abs(psf - psf_diff)), title=r"PSF difference (log$_{10}$-scale)", trim=251)
 
 
 
@@ -29,15 +29,18 @@ def objective(theta):
     theta = theta.reshape(matrix_shape)
     # (opd_rms, strehl, spotsize_rms, mtf) = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=4)
     out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=4)
+    # out is (opd_rms, strehl, spotsize_rms, mtf)
     out = np.array(out) / expected_values * minimization_rescaling
-    # TODO: implement this as chi-squared minimization
-    opd_rms, strehl, spotsize_rms, mtf = out # remove this later its just for convenience now. Cant be vectorized.
-    print(opd_rms, strehl, spotsize_rms, mtf)
-    return opd_rms
+    out[1] = 1 / out[1]
+    out = np.mean(np.square(out))
+    print(out)
+    if np.allclose(np.clip(out, a_min=1., a_max=None), 1., atol=1e-01):
+        return 1.
+    return out
 
 
 def optimize_jwst_mirror_segments(correction_mat):
-    plot_psf(correction_mat, show_MATLAB=False)
+    # plot_psf(correction_mat, show_MATLAB=False)
 
     print(f"\t Starting optimization...\n"
           f"\t\t Optimizing {correction_mat.shape[1]} parameters of {correction_mat.shape[0]} reflector segments...")
@@ -47,6 +50,11 @@ def optimize_jwst_mirror_segments(correction_mat):
                       options={"disp": True,
                                "maxiter": 50,
                                "ftol": 1.e-6})
+    print(f"\tConverged educed chi-squared: {result.fun}")
+    print(f"\tFunction evaluations: {result.nfev}\n"
+          f"\t\t The comparison of models with a reduced chi-squared between\n"
+          f"\t\t{1 - np.sqrt(2/result.nfev) * 3:.3f} and "
+          f"\t\t{1 + np.sqrt(2/result.nfev) * 3:.3f} (3 sigma) is uncertain.")
 
     converged = result.x.reshape(matrix_shape)
     plot_psf(converged, show_MATLAB=True)
@@ -67,11 +75,11 @@ if __name__ == "__main__":
 
     ### EXPECTED VALUES FOR CHI_SQURED OPTIMIZATION
     softness_scale = 1
-    minimization_rescaling = np.array([1., -1., 1., 1.])
-    expected_opd = 0.0746
+    minimization_rescaling = softness_scale * np.array([1., 1., 1., 1.])
+    expected_opd = 0.01  # 0.0746 -> in practice diff limited
     expected_strehl = 1.
-    expected_spotsize_rms = 0.
-    expected_mtf = 0.
+    expected_spotsize_rms = 0.003
+    expected_mtf = 1.
 
     expected_values = np.array([expected_opd, expected_strehl, expected_spotsize_rms, expected_mtf])
 
@@ -98,7 +106,7 @@ if __name__ == "__main__":
     ])
 
     rng = np.random.default_rng()
-    noise = rng.normal(0, 0.1, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
+    noise = rng.normal(0, 0.0001, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
 
     correction_mat += noise
 
