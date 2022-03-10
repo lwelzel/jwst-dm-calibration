@@ -131,7 +131,7 @@ def plotCAmpl(Iorig, GAMMA=4, RANGE=None, plotnow=True, trim=0, title="plotCAmpl
     if plotnow:
         # modified for ipython notebooks
         fig, ax = plt.subplots(1, figsize=(6, 6))
-        ax.set_xlabel("x");
+        ax.set_xlabel("x")
         ax.set_ylabel("y")
         ax.set_title("{}".format(title))
         ax.imshow(img, aspect='equal', vmin=0., vmax=1., interpolation='nearest')

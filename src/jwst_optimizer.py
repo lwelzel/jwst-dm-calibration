@@ -27,13 +27,20 @@ def plot_psf(correction_matrix, show_MATLAB=False):
 
 def objective(theta):
     theta = theta.reshape(matrix_shape)
-    out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=1)
-    print(out)
-    return out
+    # (opd_rms, strehl, spotsize_rms, mtf) = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=4)
+    out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=4)
+    out = np.array(out) / expected_values * minimization_rescaling
+    # TODO: implement this as chi-squared minimization
+    opd_rms, strehl, spotsize_rms, mtf = out # remove this later its just for convenience now. Cant be vectorized.
+    print(opd_rms, strehl, spotsize_rms, mtf)
+    return opd_rms
 
 
 def optimize_jwst_mirror_segments(correction_mat):
     plot_psf(correction_mat, show_MATLAB=False)
+
+    print(f"\t Starting optimization...\n"
+          f"\t\t Optimizing {correction_mat.shape[1]} parameters of {correction_mat.shape[0]} reflector segments...")
 
     result = minimize(objective, x0=correction_mat,
                       method="SLSQP",
@@ -41,23 +48,32 @@ def optimize_jwst_mirror_segments(correction_mat):
                                "maxiter": 50,
                                "ftol": 1.e-6})
 
-    print(result)
-
     converged = result.x.reshape(matrix_shape)
     plot_psf(converged, show_MATLAB=True)
     return
 
 
 if __name__ == "__main__":
-    print("\t Starting up MATLAB engine...")
     global eng
+    global matrix_shape
+    global minimization_rescaling
+    global expected_values
+    print("Starting up MATLAB engine...")
     eng = matlab.engine.start_matlab()
     eng.addpath(eng.genpath(getcwd()), nargout=0)
-    print("\t MATLAB engine running.")
+    print("MATLAB engine running.")
 
-    global matrix_shape
     matrix_shape = (18, 4)
 
+    ### EXPECTED VALUES FOR CHI_SQURED OPTIMIZATION
+    softness_scale = 1
+    minimization_rescaling = np.array([1., -1., 1., 1.])
+    expected_opd = 0.0746
+    expected_strehl = 1.
+    expected_spotsize_rms = 0.
+    expected_mtf = 0.
+
+    expected_values = np.array([expected_opd, expected_strehl, expected_spotsize_rms, expected_mtf])
 
     correction_mat = np.array([
         [0.414170806677252, 0.300243140031183, 0.439976576044261, 0.0152119184255706, -0.128208842154579,
@@ -89,5 +105,8 @@ if __name__ == "__main__":
     correction_mat = correction_mat.T
 
     optimize_jwst_mirror_segments(correction_mat)
+
+    input("Press any key to continue...\n"
+          "\t This will close the MATLAB figures.")
 
     eng.quit()

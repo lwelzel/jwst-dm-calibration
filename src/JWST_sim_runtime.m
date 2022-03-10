@@ -1,7 +1,7 @@
 %% JWST Dashboard Core Functionality
 % A more open version of the JWST exercise, showing syntax needed to access
 % outputs directly.
-function OPD_RMS = simulate(CorrectionMatrix)
+function [OPD_RMS, Strehl, RMS_Spotsize, MTF_data]  = simulate(CorrectionMatrix)
     % close all; clear all; clc;
 
     %% Load Lens File
@@ -76,7 +76,7 @@ function OPD_RMS = simulate(CorrectionMatrix)
     % You can access the geometrical optical data as follows. These outputs may
     % be useful in an optimization function. 
     % OPD = OPD_data(1).field(1).OPD; % OPD data retrieved from struct;
-    % RMS_Spotsize = OPD_data(1).field(1).SPOT_RMS; % RMS Spotsize;
+    RMS_Spotsize = OPD_data(1).field(1).SPOT_RMS; % RMS Spotsize;
     % Full_Spotsize = OPD_data(1).field(1).SPOT_GEO; % Full Spotsize;
     % Centroid_X = OPD_data(1).field(1).CENX; % X location in the image plane of the centroid of the spot;
     % Centroid_Y = OPD_data(1).field(1).CENY; % Y location in the image plane of the centroid of the spot;
@@ -86,12 +86,12 @@ function OPD_RMS = simulate(CorrectionMatrix)
     %% Calculate PSF and MTF
 
     % Calculate PSF and MTF from the wavefront data. Final input are the figure numbers (can be omitted)         
-    % [PSF_data, MTF_data] = FORREst(OS_out, settings, OP, OPD_data, [5 6]);
+    [PSF_data, MTF_data] = FORREst(OS_out, settings, OP, OPD_data, [5 6]);
 
-    % PSF = PSF_data(1).field(1).PSFpoly; % extract point spread function.
-    % PSF_diff = PSF_data(1).field(1).PSFpolydiff; % extract diffraction limited PSF.
-    % ImageX = PSF_data(1).field(1).ImageX; % The x-axis of the image, in mm
-    % ImageY = PSF_data(1).field(1).ImageY; % The y-axis of the image, in mm
-    % Strehl = PSF_data(1).field(1).Strehl; % The Strehl Ratio;
+    PSF = PSF_data(1).field(1).PSFpoly; % extract point spread function.
+%    PSF_diff = PSF_data(1).field(1).PSFpolydiff; % extract diffraction limited PSF.
+%    ImageX = PSF_data(1).field(1).ImageX; % The x-axis of the image, in mm
+%    ImageY = PSF_data(1).field(1).ImageY; % The y-axis of the image, in mm
+    Strehl = PSF_data(1).field(1).Strehl; % The Strehl Ratio;
     
 end
