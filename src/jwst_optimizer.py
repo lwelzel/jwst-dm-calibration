@@ -14,23 +14,23 @@ import matlab.engine
 from static_plotters import displC, plotCAmpl
 
 def plot_psf(correction_matrix, show_MATLAB=False):
-    out = eng.JWST_Simulation(matlab.double(correction_matrix.tolist()), show_MATLAB, nargout=12)
+    out = eng.JWST_sim_runtime(matlab.double(correction_matrix.tolist()), matlab.double(tolerance_mat.tolist()), sampling, True, show_MATLAB, nargout=6)
 
-    psf = np.array(out[7]._data).reshape(out[7].size, order='F').T
-    psf_diff = np.array(out[8]._data).reshape(out[8].size, order='F').T
+    psf = np.array(out[3]._data).reshape(out[3].size, order='F').T
+    psf_diff = np.array(out[4]._data).reshape(out[4].size, order='F').T
     displC(np.log10(psf), title=r"Corrected PSF (log$_{10}$-scale)", trim=251)
     displC(np.log10(psf_diff), title=r"Diffraction limited PSF (log$_{10}$-scale)", trim=251)
 
     displC(np.log10(np.abs(psf - psf_diff)), title=r"PSF difference (log$_{10}$-scale)", trim=251)
-
+    return
 
 def objective(theta):
     theta = theta.reshape(matrix_shape)
-    _out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), sampling, False, nargout=4)
+    _out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), matlab.double(tolerance_mat.tolist()), sampling, False, False, nargout=6)
     # out is (opd_rms, spotsize_rms, strehl, mtf)
-    _out = np.array(_out) / expected_values * minimization_rescaling
-    _out[2] = 1 / _out[2]
     _out = _out[:2]
+    _out = np.array(_out) / expected_values * minimization_rescaling
+    #_out[2] = 1 / _out[2]
     out = np.mean(np.square(_out))
     print(out)
     if np.allclose(np.clip(_out, a_min=1., a_max=None), 1., atol=1e-01):
@@ -56,7 +56,14 @@ def optimize_jwst_mirror_segments(correction_mat):
           f"\t\t{1 + np.sqrt(2/result.nfev) * 3:.3f} (3 sigma) is uncertain.")
 
     converged = result.x.reshape(matrix_shape)
-    plot_psf(converged, show_MATLAB=True)
+    #plot_psf(converged, show_MATLAB=True)
+    out = eng.JWST_sim_runtime(converged, matlab.double(tolerance_mat.tolist()), sampling, True, False, nargout=6)
+    with open("JWST_aligmnent_results.txt", "a") as f:
+        f.write(str(i)+"\n")
+        f.write(result)
+        f.write("\n")
+        f.write(out)
+        f.write("\n")
     return
 
 
@@ -65,7 +72,9 @@ if __name__ == "__main__":
     global matrix_shape
     global minimization_rescaling
     global expected_values
+    global tolerance_mat
     global sampling
+    global i
     print("Starting up MATLAB engine...")
     eng = matlab.engine.start_matlab()
     eng.addpath(eng.genpath(getcwd()), nargout=0)
@@ -76,13 +85,14 @@ if __name__ == "__main__":
 
     ### EXPECTED VALUES FOR CHI_SQURED OPTIMIZATION
     softness_scale = 1
-    minimization_rescaling = softness_scale * np.array([1., 1., 1., 1.])
+    minimization_rescaling = softness_scale * np.array([1., 1.])
     expected_opd = 0.01  # 0.0746 -> in practice diff limited
-    expected_strehl = 1.
+    #expected_strehl = 1.
     expected_spotsize_rms = 0.003
-    expected_mtf = 1.
+    #expected_mtf = 1.
 
-    expected_values = np.array([expected_opd, expected_spotsize_rms, expected_strehl, expected_mtf])
+    #expected_values = np.array([expected_opd, expected_spotsize_rms, expected_strehl, expected_mtf])
+    expected_values = np.array([expected_opd, expected_spotsize_rms])
 
     correction_mat = np.array([
         [0.414170806677252, 0.300243140031183, 0.439976576044261, 0.0152119184255706, -0.128208842154579,
@@ -108,16 +118,21 @@ if __name__ == "__main__":
 
     rng = np.random.default_rng()
     noise = rng.normal(0, 0.1, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
-
     correction_mat += noise
-
     correction_mat = correction_mat.T
 
-    correction_mat = np.zeros_like(correction_mat)
+    correction_mat = np.zeros(matrix_shape)
+    
+    sigma2_piston = (0.5/2)
+    sigma2_tilt = (0.5/2)
+    sigma2_focus = (10/2)
+    
+    for i in range(1):
+        tolerance_mat = np.random.normal(0, [sigma2_piston, sigma2_tilt, sigma2_tilt, sigma2_focus], matrix_shape)
+        tolerance_mat = np.zeros(matrix_shape)
+        optimize_jwst_mirror_segments(correction_mat)
 
-    optimize_jwst_mirror_segments(correction_mat)
-
-    input("Press any key to continue...\n"
-          "\t This will close the MATLAB figures.")
+    #input("Press any key to continue...\n"
+    #      "\t This will close the MATLAB figures.")
 
     eng.quit()
