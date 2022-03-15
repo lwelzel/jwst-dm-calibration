@@ -1,12 +1,13 @@
 %% JWST Dashboard Core Functionality
 % A more open version of the JWST exercise, showing syntax needed to access
 % outputs directly.
-function [OPD_RMS, Strehl, RMS_Spotsize, MTF_data]  = simulate(CorrectionMatrix)
+% opd_rms, strehl, spotsize_rms, mtf
+function [OPD_RMS, RMS_Spotsize, Strehl, MTF_data]  = simulate(CorrectionMatrix, sampling, psf)
     % close all; clear all; clc;
 
     %% Load Lens File
     OS = JWST(1);
-    sampling = 5;
+    % sampling = 5;
 
 
     %% the Tolerance Matrix is a matrix with 4 columns and 18 rows (1 row per segment) 
@@ -86,12 +87,17 @@ function [OPD_RMS, Strehl, RMS_Spotsize, MTF_data]  = simulate(CorrectionMatrix)
     %% Calculate PSF and MTF
 
     % Calculate PSF and MTF from the wavefront data. Final input are the figure numbers (can be omitted)         
-    [PSF_data, MTF_data] = FORREst(OS_out, settings, OP, OPD_data);
+    if psf
+        [PSF_data, MTF_data] = FORREst(OS_out, settings, OP, OPD_data);
 
-    PSF = PSF_data(1).field(1).PSFpoly; % extract point spread function.
-%    PSF_diff = PSF_data(1).field(1).PSFpolydiff; % extract diffraction limited PSF.
-%    ImageX = PSF_data(1).field(1).ImageX; % The x-axis of the image, in mm
-%    ImageY = PSF_data(1).field(1).ImageY; % The y-axis of the image, in mm
-    Strehl = PSF_data(1).field(1).Strehl; % The Strehl Ratio;
+        PSF = PSF_data(1).field(1).PSFpoly; % extract point spread function.
+    %    PSF_diff = PSF_data(1).field(1).PSFpolydiff; % extract diffraction limited PSF.
+    %    ImageX = PSF_data(1).field(1).ImageX; % The x-axis of the image, in mm
+    %    ImageY = PSF_data(1).field(1).ImageY; % The y-axis of the image, in mm
+        Strehl = PSF_data(1).field(1).Strehl; % The Strehl Ratio;
+
+    else
+        MTF_data = 0.;
+        Strehl = 0.;
     
 end

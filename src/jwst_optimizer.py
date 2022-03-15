@@ -24,17 +24,16 @@ def plot_psf(correction_matrix, show_MATLAB=False):
     displC(np.log10(np.abs(psf - psf_diff)), title=r"PSF difference (log$_{10}$-scale)", trim=251)
 
 
-
 def objective(theta):
     theta = theta.reshape(matrix_shape)
-    # (opd_rms, strehl, spotsize_rms, mtf) = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=4)
-    out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), nargout=4)
-    # out is (opd_rms, strehl, spotsize_rms, mtf)
-    out = np.array(out) / expected_values * minimization_rescaling
-    out[1] = 1 / out[1]
-    out = np.mean(np.square(out))
+    _out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), sampling, False, nargout=4)
+    # out is (opd_rms, spotsize_rms, strehl, mtf)
+    _out = np.array(_out) / expected_values * minimization_rescaling
+    _out[2] = 1 / _out[2]
+    _out = _out[:2]
+    out = np.mean(np.square(_out))
     print(out)
-    if np.allclose(np.clip(out, a_min=1., a_max=None), 1., atol=1e-01):
+    if np.allclose(np.clip(_out, a_min=1., a_max=None), 1., atol=1e-01):
         return 1.
     return out
 
@@ -48,7 +47,7 @@ def optimize_jwst_mirror_segments(correction_mat):
     result = minimize(objective, x0=correction_mat,
                       method="SLSQP",
                       options={"disp": True,
-                               "maxiter": 50,
+                               "maxiter": 10,
                                "ftol": 1.e-6})
     print(f"\tConverged educed chi-squared: {result.fun}")
     print(f"\tFunction evaluations: {result.nfev}\n"
@@ -66,12 +65,14 @@ if __name__ == "__main__":
     global matrix_shape
     global minimization_rescaling
     global expected_values
+    global sampling
     print("Starting up MATLAB engine...")
     eng = matlab.engine.start_matlab()
     eng.addpath(eng.genpath(getcwd()), nargout=0)
     print("MATLAB engine running.")
 
     matrix_shape = (18, 4)
+    sampling = 2
 
     ### EXPECTED VALUES FOR CHI_SQURED OPTIMIZATION
     softness_scale = 1
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     expected_spotsize_rms = 0.003
     expected_mtf = 1.
 
-    expected_values = np.array([expected_opd, expected_strehl, expected_spotsize_rms, expected_mtf])
+    expected_values = np.array([expected_opd, expected_spotsize_rms, expected_strehl, expected_mtf])
 
     correction_mat = np.array([
         [0.414170806677252, 0.300243140031183, 0.439976576044261, 0.0152119184255706, -0.128208842154579,
@@ -106,11 +107,13 @@ if __name__ == "__main__":
     ])
 
     rng = np.random.default_rng()
-    noise = rng.normal(0, 0.0001, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
+    noise = rng.normal(0, 0.1, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
 
     correction_mat += noise
 
     correction_mat = correction_mat.T
+
+    correction_mat = np.zeros_like(correction_mat)
 
     optimize_jwst_mirror_segments(correction_mat)
 
