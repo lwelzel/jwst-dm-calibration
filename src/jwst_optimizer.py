@@ -14,7 +14,7 @@ import matlab.engine
 from static_plotters import displC, plotCAmpl
 
 def plot_psf(correction_matrix, show_MATLAB=False):
-    out = eng.JWST_sim_runtime(matlab.double(correction_matrix.tolist()), matlab.double(tolerance_mat.tolist()), sampling, True, show_MATLAB, nargout=6)
+    out = eng.JWST_sim_runtime(matlab.double(correction_matrix.tolist()), matlab.double(tolerance_mat.tolist()), True, show_MATLAB, nargout=6)
 
     psf = np.array(out[3]._data).reshape(out[3].size, order='F').T
     psf_diff = np.array(out[4]._data).reshape(out[4].size, order='F').T
@@ -26,13 +26,13 @@ def plot_psf(correction_matrix, show_MATLAB=False):
 
 def objective(theta):
     theta = theta.reshape(matrix_shape)
-    _out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), matlab.double(tolerance_mat.tolist()), sampling, False, False, nargout=6)
+    _out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), matlab.double(tolerance_mat.tolist()), False, False, nargout=6)
     # out is (opd_rms, spotsize_rms, strehl, mtf)
     _out = _out[:2]
     _out = np.array(_out) / expected_values * minimization_rescaling
     #_out[2] = 1 / _out[2]
     out = np.mean(np.square(_out))
-    print(out)
+    #print(out)
     if np.allclose(np.clip(_out, a_min=1., a_max=None), 1., atol=1e-01):
         return 1.
     return out
@@ -47,24 +47,24 @@ def optimize_jwst_mirror_segments(correction_mat):
     result = minimize(objective, x0=correction_mat,
                       method="SLSQP",
                       options={"disp": True,
-                               "maxiter": 10,
+                               "maxiter": 15,
                                "ftol": 1.e-6})
-    print(f"\tConverged educed chi-squared: {result.fun}")
-    print(f"\tFunction evaluations: {result.nfev}\n"
-          f"\t\t The comparison of models with a reduced chi-squared between\n"
-          f"\t\t{1 - np.sqrt(2/result.nfev) * 3:.3f} and "
-          f"\t\t{1 + np.sqrt(2/result.nfev) * 3:.3f} (3 sigma) is uncertain.")
+    # print(f"\tConverged educed chi-squared: {result.fun}")
+    # print(f"\tFunction evaluations: {result.nfev}\n"
+    #       f"\t\t The comparison of models with a reduced chi-squared between\n"
+    #       f"\t\t{1 - np.sqrt(2/result.nfev) * 3:.3f} and "
+    #       f"\t\t{1 + np.sqrt(2/result.nfev) * 3:.3f} (3 sigma) is uncertain.")
 
     converged = result.x.reshape(matrix_shape)
     #plot_psf(converged, show_MATLAB=True)
-    out = eng.JWST_sim_runtime(converged, matlab.double(tolerance_mat.tolist()), sampling, True, False, nargout=6)
+    out = eng.JWST_sim_runtime(matlab.double(converged.tolist()), matlab.double(tolerance_mat.tolist()), True, False, nargout=6)
     with open("JWST_aligmnent_results.txt", "a") as f:
-        f.write(str(i)+"\n")
-        f.write(result)
-        f.write("\n")
-        f.write(out)
-        f.write("\n")
-    return
+        f.write("#"+str(i)+"\n")
+        f.write("#"+result.message+" after "+str(result.nit)+" iterations and "+str(result.nfev)+" function calls. Final values [OPD, RMS_Spotsize, Strehl]:\n")
+        f.write(str(np.array(out[:3])))
+        f.write("\n#Final correction matrix:\n"+str(converged)+"\n")
+        f.write("#Tolerance matrix:\n"+str(tolerance_mat)+"\n")
+    return result
 
 
 if __name__ == "__main__":
@@ -81,7 +81,6 @@ if __name__ == "__main__":
     print("MATLAB engine running.")
 
     matrix_shape = (18, 4)
-    sampling = 2
 
     ### EXPECTED VALUES FOR CHI_SQURED OPTIMIZATION
     softness_scale = 1
@@ -127,10 +126,11 @@ if __name__ == "__main__":
     sigma2_tilt = (0.5/2)
     sigma2_focus = (10/2)
     
-    for i in range(1):
+    iterations = 2
+    for i in range(iterations):
+        print(i+1, "of", iterations)
         tolerance_mat = np.random.normal(0, [sigma2_piston, sigma2_tilt, sigma2_tilt, sigma2_focus], matrix_shape)
-        tolerance_mat = np.zeros(matrix_shape)
-        optimize_jwst_mirror_segments(correction_mat)
+        result = optimize_jwst_mirror_segments(correction_mat)
 
     #input("Press any key to continue...\n"
     #      "\t This will close the MATLAB figures.")

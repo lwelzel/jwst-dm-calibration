@@ -2,14 +2,12 @@
 % A more open version of the JWST exercise, showing syntax needed to access
 % outputs directly.
 % opd_rms, strehl, spotsize_rms, mtf
-function [OPD_RMS, RMS_Spotsize, Strehl, PSF, PSF_diff, MTF_data]  = simulate(CorrectionMatrix, ToleranceMatrix, sampling, psf, show_results)
-%function [OPD_RMS, RMS_Spotsize, Strehl, PSF, PSF_diff, MTF_data]  = JWST_sim_runtime(CorrectionMatrix, ToleranceMatrix, sampling)
+function [OPD_RMS, RMS_Spotsize, Strehl, PSF, PSF_diff, MTF_data]  = simulate(CorrectionMatrix, ToleranceMatrix, psf, show_results)
     % close all; clear all; clc;
 
     %% Load Lens File
     OS = JWST(1);
-    % sampling = 5;
-
+    sampling = 2;
 
     %% the Tolerance Matrix is a matrix with 4 columns and 18 rows (1 row per segment) 
     % Column 1: Piston tolerance [micron]
@@ -91,7 +89,6 @@ function [OPD_RMS, RMS_Spotsize, Strehl, PSF, PSF_diff, MTF_data]  = simulate(Co
     % Calculate PSF and MTF from the wavefront data. Final input are the figure numbers (can be omitted)         
     %psf = false;
     if psf
-        x = 1
         [PSF_data, MTF_data] = FORREst(OS_out, settings, OP, OPD_data);
 
         PSF = PSF_data(1).field(1).PSFpoly; % extract point spread function.
