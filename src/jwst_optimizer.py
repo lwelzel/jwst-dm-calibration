@@ -115,10 +115,11 @@ if __name__ == "__main__":
          10.2546957682035, -7.65585159583474]
     ])
 
-    rng = np.random.default_rng()
-    noise = rng.normal(0, 0.1, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
-    correction_mat += noise
-    correction_mat = correction_mat.T
+    # rng = np.random.default_rng()
+    # noise = rng.normal(0, 0.1, correction_mat.shape) * np.mean(np.abs(correction_mat), axis=0)
+    # correction_mat += noise
+    # correction_mat = correction_mat.T
+    np.random.seed(28949768)
 
     correction_mat = np.zeros(matrix_shape)
     
