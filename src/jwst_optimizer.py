@@ -127,7 +127,7 @@ if __name__ == "__main__":
     sigma2_tilt = (0.5/2)
     sigma2_focus = (10/2)
     
-    iterations = 2
+    iterations = 10**5
     for i in range(iterations):
         print(i+1, "of", iterations)
         tolerance_mat = np.random.normal(0, [sigma2_piston, sigma2_tilt, sigma2_tilt, sigma2_focus], matrix_shape)
