@@ -14,6 +14,27 @@ import matlab.engine
 from static_plotters import displC, plotCAmpl
 
 def plot_psf(correction_matrix, show_MATLAB=False):
+    '''
+    This function will plot the PSF, the diffraction limited PSF, and their difference.
+    To plot the PSF, it uses the JWST_Simulation function in Matlab, which is part of the
+    WebbPSF package.
+
+    Parameters
+    ----------
+    correction_matrix : array_like
+        A 2D array of shape (21, 3) that contains the Zernike coefficients.
+    show_MATLAB : bool
+        Whether to show the MATLAB output or not.
+
+    Returns
+    -------
+    psf : array_like
+        The PSF.
+    psf_diff : array_like
+        The diffraction limited PSF.
+    displC : array_like
+        A function that displays a complex array using matplotlib's imshow.
+    '''
     out = eng.JWST_Simulation(matlab.double(correction_matrix.tolist()), show_MATLAB, nargout=12)
 
     psf = np.array(out[7]._data).reshape(out[7].size, order='F').T
@@ -25,6 +46,23 @@ def plot_psf(correction_matrix, show_MATLAB=False):
 
 
 def objective(theta):
+    '''
+    Calculate the objective function for the optimization.
+
+    The objective function is the mean of the squared difference between the
+    expected values and the actual values of the output parameters.
+    In this case it is comparable to chi squared.
+
+    Parameters
+    ----------
+    theta : array_like
+        The vector of optimization parameters.
+
+    Returns
+    -------
+    out : float
+    The value of the objective function.
+    '''
     theta = theta.reshape(matrix_shape)
     _out = eng.JWST_sim_runtime(matlab.double(theta.tolist()), sampling, False, nargout=4)
     # out is (opd_rms, spotsize_rms, strehl, mtf)
@@ -32,13 +70,46 @@ def objective(theta):
     _out[2] = 1 / _out[2]
     _out = _out[:2]
     out = np.mean(np.square(_out))
-    print(out)
     if np.allclose(np.clip(_out, a_min=1., a_max=None), 1., atol=1e-01):
         return 1.
     return out
 
 
 def optimize_jwst_mirror_segments(correction_mat):
+    '''
+    This function optimizes the shape of a mirror segmented into a matrix of
+    reflective segments. The optimization is performed using the SLSQP algorithm
+    from the scipy.optimize module. The optimization is performed on the shape of
+    the segments, and the resulting shape is returned.
+
+    Parameters
+    ----------
+    correction_mat : array_like
+        A matrix of shape (n_segments, n_parameters) of the initial shape of each
+        segment.
+
+    Returns
+    -------
+    converged : array_like
+        A matrix of shape (n_segments, n_parameters) of the converged shape of each
+        segment.
+
+    Raises
+    ------
+    ValueError
+        If the correction_mat is not a 2D array.
+
+    See Also
+    --------
+    scipy.optimize.minimize
+
+    Notes
+    -----
+    This function is intended to be used with the PSF of the JWST MIRI instrument
+    to optimize the shape of the mirror segments.
+
+    '''
+
     # plot_psf(correction_mat, show_MATLAB=False)
 
     print(f"\t Starting optimization...\n"
